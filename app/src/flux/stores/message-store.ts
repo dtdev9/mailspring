@@ -149,7 +149,9 @@ class _MessageStore extends MailspringStore {
                     files: item.files.map(file => ({
                       ...file,
                       filePath: AttachmentStore.pathForFile(item.files[0])
-                    }))
+                    })).filter(file =>
+                      !(file.contentType.includes('/global') || file.contentType.includes('/delivery-status'))
+                    )
                   }
                 }),
               }
