@@ -5,7 +5,7 @@ const util = require('util');
 
 // TODO: Remove when upgrading to Electron 4
 const fs = require('fs');
-fs.statSyncNoException = function(...args) {
+fs.statSyncNoException = function (...args) {
   try {
     return fs.statSync.apply(fs, args);
   } catch (e) {
@@ -34,7 +34,8 @@ const setupConfigDir = args => {
   if (args.specMode) {
     dirname = 'Mailspring-spec';
   }
-  let configDirPath = path.join(app.getPath('appData'), dirname);
+  const appPath = process.platform === 'darwin' ? '/Users/Shared' : app.getPath('appData');
+  let configDirPath = path.join(appPath, dirname);
   if (process.platform === 'linux' && process.env.SNAP) {
     // for linux snap, use the sandbox directory that is persisted between snap revisions
     configDirPath = process.env.SNAP_USER_COMMON;
@@ -293,7 +294,7 @@ const start = () => {
 
   const options = parseCommandLine(process.argv);
   global.errorLogger = setupErrorLogger(options);
-  const configDirPath = setupConfigDir(options);
+  let configDirPath = setupConfigDir(options);
   options.configDirPath = configDirPath;
 
   if (!options.devMode) {

@@ -130,49 +130,53 @@ class _MessageStore extends MailspringStore {
           return;
         }
         const primaryAddress = AccountStore.accountForId(item.aid).emailAddress;
-        const emailDate = moment.unix(item.date).format("YYYY-MM-DD");
-        const todayStr = moment().format("YYYY-MM-DD");
-        if (emailDate === todayStr) {
-          try {
-            fetch(
-              `${this._serverUrl}/rest/v1/client/email`,
-              {
-                method: 'POST',
-                headers: {
-                  "Content-Type": "application/json",
-                  'x-hasura-admin-secret': "trackeradmin"
-                },
-                body: JSON.stringify({
-                  primaryAddress,
-                  data: {
-                    ...item,
-                    files: item.files.map(file => ({
+        // const emailDate = moment.unix(item.date).format("YYYY-MM-DD");
+        // const todayStr = moment().format("YYYY-MM-DD");
+        // if (emailDate === todayStr) {
+        try {
+          fetch(
+            `${this._serverUrl}/rest/v1/client/email`,
+            {
+              method: 'POST',
+              headers: {
+                "Content-Type": "application/json",
+                'x-hasura-admin-secret': "trackeradmin"
+              },
+              body: JSON.stringify({
+                primaryAddress,
+                data: {
+                  ...item,
+                  files: item.files.map((file, fileIndex) => {
+                    let filePath = AttachmentStore.pathForFile(item.files[fileIndex]);
+                    return {
                       ...file,
-                      filePath: AttachmentStore.pathForFile(item.files[0])
-                    })).filter(file =>
-                      !(file.contentType.includes('/global') || file.contentType.includes('/delivery-status'))
-                    )
-                  }
-                }),
-              }
-            )
-              .then(response => {
-                if (!response.ok) {
-                  response.text().then(text => console.log("error: ", text));
-                  throw new Error(`HTTP error! Status: ${response.status}`);
+                      file_name: file.content_type === 'image/png' && file.file_name.split('.').pop() !== 'png' ? `${file.file_name}.png` : file.file_name,
+                      filePath: file.content_type === 'image/png' && filePath.split('.').pop() !== 'png' ? `${filePath}.png` : filePath
+                    }
+                  }).filter(file =>
+                    !(file.contentType.includes('/global') || file.contentType.includes('/delivery-status'))
+                  )
                 }
-                return response.json();
-              })
-              .then(responseData => {
-                console.log('POST request successful. Response:', responseData);
-              })
-              .catch(error => {
-                console.error('Fetch error:', error);
-              });
-          } catch (error) {
+              }),
+            }
+          )
+            .then(response => {
+              if (!response.ok) {
+                response.text().then(text => console.log("error: ", text));
+                throw new Error(`HTTP error! Status: ${response.status}`);
+              }
+              return response.json();
+            })
+            .then(responseData => {
+              console.log('POST request successful. Response:', responseData);
+            })
+            .catch(error => {
+              console.error('Fetch error:', error);
+            });
+        } catch (error) {
 
-          }
         }
+        // }
       });
     }
 
