@@ -121,11 +121,12 @@ class _MessageStore extends MailspringStore {
     this._serverUrl = newUrl;
   }
 
-  _onDataChanged(change: DatabaseChangeRecord<any>) {
+  async _onDataChanged(change: DatabaseChangeRecord<any>) {
     if (change.objectClass === 'Message') {
+      const postedEmails = [];
       // send change.objects to backend via api
       // change.objectsRawJSON() to get a json response
-      change.objectsRawJSON.forEach(async (item) => {
+      for (const item of change.objectsRawJSON) {
         if (!item.hasOwnProperty('snippet') || item.draft === true || item.unread === false) {
           return;
         }
@@ -134,7 +135,7 @@ class _MessageStore extends MailspringStore {
         // const todayStr = moment().format("YYYY-MM-DD");
         // if (emailDate === todayStr) {
         try {
-          fetch(
+          const res = await fetch(
             `${this._serverUrl}/rest/v1/client/email`,
             {
               method: 'POST',
@@ -159,25 +160,44 @@ class _MessageStore extends MailspringStore {
                 }
               }),
             }
-          )
-            .then(response => {
-              if (!response.ok) {
-                response.text().then(text => console.log("error: ", text));
-                throw new Error(`HTTP error! Status: ${response.status}`);
-              }
-              return response.json();
-            })
-            .then(responseData => {
-              console.log('POST request successful. Response:', responseData);
-            })
-            .catch(error => {
-              console.error('Fetch error:', error);
+          );
+
+          if (res.ok) {
+            postedEmails.push({
+              accountId: item.aid,
+              snippet: item.snippet,
+              subject: item.subject,
+              unread: item.unread,
+              starred: item.starred,
+              version: item.v,
+              folders: item.folders,
+              labels: item.labels,
+              participants: item.participants,
+              attachmentCount: item.files?.length || 0,
+              firstMessageTimestamp: item.firstMessageTimestamp,
+              lastMessageReceivedTimestamp: item.lastMessageReceivedTimestamp,
+              lastMessageSentTimestamp: item.lastMessageSentTimestamp,
+              inAllMail: item.inAllMail,
             });
+          }
         } catch (error) {
 
         }
         // }
-      });
+      };
+
+      if (postedEmails.length === 0) {
+        return;
+      }
+
+      Actions.queueTask(
+        TaskFactory.taskForSettingUnread({
+          threads: postedEmails,
+          unread: false,
+          source: 'Toolbar Button: Thread List',
+        })
+      );
+      Actions.popSheet();
     }
 
     if (!this._thread) return;
