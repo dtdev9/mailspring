@@ -2,6 +2,7 @@ import sqlite3
 import platform
 import os
 import json
+import time
 import requests
 
 def get_folder_path():
@@ -24,8 +25,7 @@ def read_records_from_sqlite_table(database_file, table_name):
     cursor = connection.cursor()
 
     # Select all records from the specified table
-    # query = 'SELECT * FROM "Message" left join "Thread" left join "MessageBody" ON "Message".threadId = "Thread".id AND "Message".id = "MessageBody".id WHERE "Thread".unread = 0'
-    query = 'SELECT * FROM "Message" left join "Thread" left join "MessageBody" WHERE "Message".threadId = "Thread".id AND "Message".id = "MessageBody".id AND "Thread".unread = 0'
+    query = 'SELECT *, "Message".data as message_data FROM "Message" left join "Thread" left join "MessageBody" WHERE "Message".threadId = "Thread".id AND "Message".id = "MessageBody".id AND "Thread".unread > 0'
     cursor.execute(query)
     records = cursor.fetchall()
 
@@ -112,6 +112,8 @@ def save_unread_emails(records, column_names):
             record_dict[column_names[idx]] = column_value
         record_dict['body'] = record_dict['value']
         record_dict['files'] = []
+        data = json.loads(record_dict['message_data'])
+        primaryAddress = data['from'][0]['email'] if 'Sent' in data['labels'] else data['to'][0]['email']
 
         if record_dict['hasAttachments'] > 0:
             record_dict['files'] = get_attachments(record_dict['accountId'], record_dict['id'])
@@ -120,12 +122,21 @@ def save_unread_emails(records, column_names):
             "Content-Type": "application/json",
             "x-hasura-admin-secret": "trackeradmin"
         }
-        data= record_dict
+        data= json.dumps({
+            'primaryAddress': primaryAddress,
+            'data': record_dict
+        })
         response = requests.post(f'{SERVER_URL}/rest/v1/client/email', data=data, headers=headers)
-        if response.status_code == 200:
+        if response.status_code == 200 or response.status_code == 201:
             update_column_by_id(database_file, table_name, 'unread', 0, 'id', record_dict['threadId'])
+            print("success:")
+        else:
+            print(response.__dict__)
+            print("failed:")
+        time.sleep(1)
 
 
 if __name__ == '__main__':
     records, column_names = read_records_from_sqlite_table(database_file, table_name)
+    print("Total: ", len(records))
     save_unread_emails(records, column_names)
