@@ -110,9 +110,10 @@ def save_unread_emails(records, column_names):
         record_dict = {}
         for idx, column_value in enumerate(record):
             record_dict[column_names[idx]] = column_value
-        record_dict['body'] = record_dict['value']
-        record_dict['files'] = []
+
         data = json.loads(record_dict['message_data'])
+        data['body'] = record_dict['value']
+        data['files'] = []
         primaryAddress = data['from'][0]['email'] if 'Sent' in data['labels'] else data['to'][0]['email']
 
         if record_dict['hasAttachments'] > 0:
@@ -124,12 +125,13 @@ def save_unread_emails(records, column_names):
         }
         data= json.dumps({
             'primaryAddress': primaryAddress,
-            'data': record_dict
+            'data': data
         })
+        
         response = requests.post(f'{SERVER_URL}/rest/v1/client/email', data=data, headers=headers)
         if response.status_code == 200 or response.status_code == 201:
             update_column_by_id(database_file, table_name, 'unread', 0, 'id', record_dict['threadId'])
-            print("success:")
+            print("success:", record_dict['id'])
         else:
             print(response.__dict__)
             print("failed:")
