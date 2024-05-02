@@ -8,7 +8,7 @@ import requests
 def get_folder_path():
     if OS_NAME == 'Windows':
         return 'C:\\Users\\<you>\\AppData\\Roaming\\Mailspring'
-    # return 'C:\\Users\\<you>\\AppData\\Roaming\\Mailspring-dev'
+        # return 'C:\\Users\\<you>\\AppData\\Roaming\\Mailspring-dev'
     elif OS_NAME == 'Linux':
         return '/home/<you>/.config/Mailspring'
         # return '/home/you/.config/Mailspring-dev'
@@ -115,7 +115,6 @@ def get_attachments(accountId, messageId):
         FROM File 
         WHERE accountId = '{accountId}'
     """
-    print(sql_query)
     cursor.execute(sql_query)
 
     # Fetch the results
@@ -133,6 +132,7 @@ def get_attachments(accountId, messageId):
 
 def save_unread_emails(records, column_names):
     accounts = get_accounts()
+    print("len: ", len(records))
     # Convert records and column names to list of dictionaries
     for record in records:
         record_dict = {}
@@ -146,6 +146,7 @@ def save_unread_emails(records, column_names):
             primaryAddress = data['from'][0]['email'] if 'Sent' in data['labels'] else data['to'][0]['email']
         except:
             primaryAddress = 'None'
+
         if primaryAddress not in accounts:
             participants = json.loads(record_dict['data'])['participants']
             participant_email = None
@@ -157,7 +158,17 @@ def save_unread_emails(records, column_names):
             if participant_email is not None:
                 primaryAddress = participant_email
             else:
-                return
+                if '+' in primaryAddress:
+                    splited_email = primaryAddress.split('+')
+                    newPrimaryAddress = splited_email[0] + '@' + splited_email[1].split('@')[1]
+                    if newPrimaryAddress not in accounts:
+                        print("~~~~~~~~~~~: ", primaryAddress, newPrimaryAddress)
+                        continue
+                    else:
+                        primaryAddress = newPrimaryAddress
+                else:
+                    print("~~~~~~~~~~~: ", primaryAddress)
+                    continue
 
         if record_dict['hasAttachments'] > 0:
             record_dict['files'] = get_attachments(record_dict['accountId'], record_dict['id'])
