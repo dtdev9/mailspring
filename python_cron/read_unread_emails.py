@@ -7,10 +7,11 @@ import requests
 
 def get_folder_path():
     if OS_NAME == 'Windows':
-        return 'C:\\Users\\<you>\\AppData\\Roaming\\Mailspring-dev'
+        return 'C:\\Users\\<you>\\AppData\\Roaming\\Mailspring'
+    # return 'C:\\Users\\<you>\\AppData\\Roaming\\Mailspring-dev'
     elif OS_NAME == 'Linux':
-        # return '/home/<you>/.config/Mailspring'
-        return '/home/you/.config/Mailspring-dev'
+        return '/home/<you>/.config/Mailspring'
+        # return '/home/you/.config/Mailspring-dev'
     else:
         return '/Users/Shared/Mailspring'
 
@@ -18,6 +19,32 @@ OS_NAME = platform.system()
 SERVER_URL = 'http://localhost'
 database_file = os.path.join(get_folder_path(), "edgehill.db") # Replace with your SQLite database file path
 table_name = "Thread"  # Replace with the name of your table
+
+def get_accounts():
+    headers = {
+        "Content-Type": "application/json",
+        "x-hasura-admin-secret": "trackeradmin"
+    }
+    query = """
+    {
+        client_email_addresses {
+            id
+            email_address
+        }
+    }
+    """
+
+    # Define your GraphQL variables if any
+    variables = {
+        # "variableName": "variableValue"
+    }
+    res = requests.post("http://localhost/v1/graphql",
+                       headers=headers,
+                       data=json.dumps({'query': query, 'variables': variables}))
+    data = res.json()
+    if 'errors' in data:
+        return []
+    return [item['email_address'] for item in data['data']['client_email_addresses']]
 
 
 def read_records_from_sqlite_table(database_file, table_name):
@@ -105,6 +132,7 @@ def get_attachments(accountId, messageId):
     return attachments
 
 def save_unread_emails(records, column_names):
+    accounts = get_accounts()
     # Convert records and column names to list of dictionaries
     for record in records:
         record_dict = {}
@@ -114,7 +142,22 @@ def save_unread_emails(records, column_names):
         data = json.loads(record_dict['message_data'])
         data['body'] = record_dict['value']
         data['files'] = []
-        primaryAddress = data['from'][0]['email'] if 'Sent' in data['labels'] else data['to'][0]['email']
+        try:
+            primaryAddress = data['from'][0]['email'] if 'Sent' in data['labels'] else data['to'][0]['email']
+        except:
+            primaryAddress = 'None'
+        if primaryAddress not in accounts:
+            participants = json.loads(record_dict['data'])['participants']
+            participant_email = None
+            for participant in participants:
+                if participant['email'] in accounts:
+                    participant_email = participant['email']
+                    break
+
+            if participant_email is not None:
+                primaryAddress = participant_email
+            else:
+                return
 
         if record_dict['hasAttachments'] > 0:
             record_dict['files'] = get_attachments(record_dict['accountId'], record_dict['id'])
