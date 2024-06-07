@@ -43,6 +43,16 @@ learn from other people doing development.
 
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
 
+### Install dependencies
+If you are using ubuntu, run the below commands. On other OS, skip this step
+
+```
+sudo apt install libsecret-1-dev
+sudo apt-get install execstack 
+sudo apt-get install rpm
+```
+
+
 ### Running Mailspring from Source
 
 To install all dependencies and run Mailspring from its source code,
@@ -68,6 +78,17 @@ of the Mailspring repository:
 
 ```
 npm run-script build
+```
+
+### Mailspring code guideline
+
+Where to send emails
+```
+_onDataChanged function at src/flux/stores/message-store.ts
+```
+```
+Change server url on thread-seearch-bar.tsx
+Changed the attachment-store.ts
 ```
 
 ### Building A Plugin
