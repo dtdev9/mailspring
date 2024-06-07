@@ -49,6 +49,7 @@ To install all dependencies and run Mailspring from its source code,
 run the following commands from the root directory of the Mailspring repository:
 
 ```
+git checkout `feat/api-integration`
 export npm_config_arch=x64 # If you are on an M1 / Apple Silicon Mac
 npm install
 npm start
